@@ -4,8 +4,8 @@
 
 | Library | STFT | ISTFT | CPU | GPU | Default Type | Centered |
 |---------|------|-------|-----|-----|--------------|----------|
-| Scipy   | Y    |  Y    | Y    | N  | Complex 128 | Y      |
-| Librosa | Y     | Y    | Y    | N  |              |          |
+| Scipy   |      |  Y    | Y    | N  | Complex 128 | Y      |
+| Librosa | Y    | Y    | Y    | N  |              |          |
 | PyTorch |      |       |     |     |              |          |
 | Tensorflow |      |       |     |     |           | N         |
 
