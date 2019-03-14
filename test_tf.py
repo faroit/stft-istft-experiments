@@ -7,7 +7,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 tf.enable_eager_execution()
 
-def stft(x, n_fft=2048, n_hopsize=1024, center=True, out_type="tf"):
+def stft(x, n_fft=2048, n_hopsize=1024, center=True, out_type="numpy"):
     """Code from: 
     https://github.com/tensorflow/tensorflow/issues/16465#issuecomment-396494851
     """
@@ -15,7 +15,7 @@ def stft(x, n_fft=2048, n_hopsize=1024, center=True, out_type="tf"):
     if center:
         # librosa pads by n_fft, which almost works perfectly here, except for with frame_step 256.
         pad_amount = 2 * (n_fft - n_hopsize)
-        audio = tf.pad(audio, [[pad_amount // 2, pad_amount // 2]], 'REFLECT')
+        audio = tf.pad(audio, [[pad_amount // 2, pad_amount // 2]], 'CONSTANT')
 
     f = tf.contrib.signal.frame(audio, n_fft, n_hopsize, pad_end=False)
     w = tf.contrib.signal.hann_window(n_fft, periodic=True)
@@ -47,7 +47,7 @@ def spectrogram(X, power):
 if __name__ == "__main__":
     s = utils.sine()
     X = stft(s)
-    print(type(X), X.shape)
+    print(X.dtype, X.shape)
     x = istft(X)
     print(utils.rms(s, x))
 

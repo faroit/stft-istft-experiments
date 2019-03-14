@@ -10,7 +10,7 @@ def stft(x, n_fft=2048, n_hopsize=1024):
         x, 
         nperseg=n_fft, 
         noverlap=n_fft - n_hopsize, 
-        padded=True
+        padded=True,
     )
     return X * n_hopsize
 
