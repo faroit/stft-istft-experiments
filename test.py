@@ -9,7 +9,7 @@ stfts = [test_torch, test_scipy, test_librosa, test_tf]
 istfts = [test_torch, test_scipy, test_librosa, test_tf]
 
 n_fft = 2048
-n_hopsize = 512
+n_hopsize = 1024
 
 if __name__ == "__main__":
     s = utils.sine(dtype=np.float32)
