@@ -12,7 +12,8 @@ dependencies:
   - setuptools=40.7.3
   - torchvision=0.2.1
   - wheel=0.32.3
+  - librosa=0.6.3
   - pip:
-    tensorflow=1.13.0rc1
+    - tensorflow==1.13.0rc1
 
 
