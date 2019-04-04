@@ -3,7 +3,7 @@ import numpy as np
 import utils
 
 
-def stft(sig, n_fft=2048, hop_length=1024, window=torch.hann_window, out_type="numpy"):
+def stft(sig, n_fft=2048, n_hopsize=1024, window=torch.hann_window, out_type="numpy"):
     if not isinstance(sig, torch.DoubleTensor):
         sig_t = torch.from_numpy(np.atleast_2d(sig)).float()
     else:
@@ -13,7 +13,7 @@ def stft(sig, n_fft=2048, hop_length=1024, window=torch.hann_window, out_type="n
     window_t.to(sig_t.device)
 
     # default values are consistent with librosa.core.spectrum._spectrogram
-    stft_f = torch.stft(sig_t, n_fft=n_fft, hop_length=hop_length,
+    stft_f = torch.stft(sig_t, n_fft=n_fft, hop_length=n_hopsize,
         window=window_t, 
         center=True,
         normalized=False, 
@@ -31,7 +31,7 @@ def stft(sig, n_fft=2048, hop_length=1024, window=torch.hann_window, out_type="n
 
 
 
-def istft(stft_matrix, hop_length=1024, win_length=2048, window=torch.hann_window,
+def istft(stft_matrix, n_fft=2048, n_hopsize=1024, window=torch.hann_window,
           center=True, normalized=False, onesided=True, length=None, out_type="numpy"):
     """stft_matrix = (batch, freq, time, complex) 
 
@@ -60,23 +60,23 @@ def istft(stft_matrix, hop_length=1024, win_length=2048, window=torch.hann_windo
     batch = stft_matrix.shape[0]
 
     # By default, use the entire frame
-    if win_length is None:
-        win_length = n_fft
+    if n_fft is None:
+        n_fft = n_fft
 
-    if hop_length is None:
-        hop_length = int(win_length // 4)
+    if n_hopsize is None:
+        n_hopsize = int(n_fft // 4)
 
     istft_window = window(n_fft)
     istft_window.to(istft_window.device).view(1, -1)  # (batch, freq)
 
     n_frames = stft_matrix.shape[-2]
-    expected_signal_len = n_fft + hop_length * (n_frames - 1)
+    expected_signal_len = n_fft + n_hopsize * (n_frames - 1)
     
     y = torch.zeros(batch, expected_signal_len, device=device)
     for i in range(n_frames):
-        sample = i * hop_length
+        sample = i * n_hopsize
         spec = stft_matrix[:, :, i]
-        iffted = torch.irfft(spec, signal_ndim=1, signal_sizes=(win_length,))
+        iffted = torch.irfft(spec, signal_ndim=1, signal_sizes=(n_fft,))
 
         ytmp = istft_window *  iffted
         y[:, sample:(sample+n_fft)] += ytmp
@@ -90,7 +90,7 @@ def istft(stft_matrix, hop_length=1024, win_length=2048, window=torch.hann_windo
         elif y.shape[1] < length:
             y = torch.cat(y[:, :length], torch.zeros(y.shape[0], length - y.shape[1], device=y.device))
     
-    coeff = n_fft/float(hop_length) / 2.0  # -> this might go wrong if curretnly asserted values (especially, `normalized`) changes.
+    coeff = n_fft/float(n_hopsize) / 2.0  # -> this might go wrong if curretnly asserted values (especially, `normalized`) changes.
     
     if out_type == "torch":
         return y / coeff

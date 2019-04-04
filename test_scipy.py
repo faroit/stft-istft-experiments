@@ -1,7 +1,5 @@
 import numpy as np
 import utils
-import librosa
-import torch
 import scipy.signal
 
 
@@ -33,7 +31,5 @@ def spectrogram(X, power):
 if __name__ == "__main__":
     s = utils.sine()
     X = stft(s)
-    print(X.shape)
     x = istft(X, rate=44100)
-    # print(x.shape)
     print(utils.rms(s, x))
