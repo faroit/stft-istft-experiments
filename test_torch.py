@@ -38,7 +38,7 @@ def stft(sig_vec, n_fft=None, hop_length=None, window=torch.hann_window, out_typ
     elif out_type == "numpy":
         return out_torch[0, ...] + out_torch[1, ...]*1j # combine real and imaginary part
 
-def istft(stft_mat, hop_length=None, window=torch.hann_window):
+def istft(stft_mat, length=None, hop_length=None, window=torch.hann_window):
     """ stft_mat = [batch, freq, time, complex]
 
         default values are consistent with librosa.core.spectrum._spectrogram:
@@ -49,9 +49,6 @@ def istft(stft_mat, hop_length=None, window=torch.hann_window):
 
     All based on librosa
         - http://librosa.github.io/librosa/_modules/librosa/core/spectrum.html#istft
-    What's missing?
-        - normalize by sum of squared window --> do we need it here?
-        Actually the result is ok by simply dividing y by 2. 
     """
 
     if not isinstance(stft_mat, torch.DoubleTensor):
@@ -79,6 +76,12 @@ def istft(stft_mat, hop_length=None, window=torch.hann_window):
         win_vec[:, idx_sig:(idx_sig+n_fft)] += win_vec_1frame
     sig_vec /= win_vec
     sig_vec = sig_vec[:, n_fft//2:-n_fft//2] # unpadding
+
+    if length is not None:
+        if sig_vec.shape[1] > length:
+            sig_vec = sig_vec[:, :length]
+        elif sig_vec.shape[1] < length:
+            sig_vec = torch.cat(sig_vec[:, :length], torch.zeros(sig_vec.shape[0], length - sig_vec.shape[1], device=sig_vec.device))
 
     # out_torch = (sig_vec / window_istft.sum()).squeeze().cpu().numpy()
     out_torch = (sig_vec).squeeze().cpu().numpy()
