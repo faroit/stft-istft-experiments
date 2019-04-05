@@ -3,7 +3,6 @@ import test_librosa
 import test_torch
 import utils
 import numpy as np
-import matplotlib.pyplot as plt
 
 stfts = [test_torch, test_scipy, test_librosa, test_tf]
 istfts = [test_torch, test_scipy, test_librosa, test_tf]
