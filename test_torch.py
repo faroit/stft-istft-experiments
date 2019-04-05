@@ -2,101 +2,87 @@ import torch
 import numpy as np
 import utils
 
+def stft(sig_vec, n_fft=None, hop_length=None, window=torch.hann_window, out_type="numpy"):
+    """ sig_vec = [batch, time]
 
-def stft(sig, n_fft=2048, n_hopsize=1024, window=torch.hann_window, out_type="numpy"):
-    if not isinstance(sig, torch.DoubleTensor):
-        sig_t = torch.from_numpy(np.atleast_2d(sig)).float()
-    else:
-        sig_t = sig
+        default values are consistent with librosa.core.spectrum._spectrogram:
+        center = True,
+        normalized = False,
+        onesided = True,
+        pad_mode = 'reflect'
+    """
 
-    window_t = window(n_fft)
-    window_t.to(sig_t.device)
+    if not isinstance(sig_vec, torch.DoubleTensor):
+        sig_vec = torch.from_numpy(np.atleast_2d(sig_vec)).float()
+    # sig_vec = sig_vec.to('cuda')
 
-    # default values are consistent with librosa.core.spectrum._spectrogram
-    stft_f = torch.stft(sig_t, n_fft=n_fft, hop_length=n_hopsize,
-        window=window_t, 
-        center=True,
-        normalized=False, 
-        onesided=True,
-        pad_mode='reflect'
+    if n_fft is None: n_fft = 2048 # better to be an even number ?
+    if hop_length is None: hop_length = int(n_fft // 2)
+
+    window_stft = window(n_fft)
+    window_stft = window_stft.to(sig_vec.device)
+
+    stft_mat = torch.stft(sig_vec,
+        n_fft = n_fft,
+        hop_length = hop_length,
+        window = window_stft,
+        center = True,
+        normalized = False,
+        onesided = True,
+        pad_mode = 'reflect'
     ).transpose(1, 2)
 
-    out_torch = stft_f.squeeze().cpu().numpy().T
-
+    out_torch = stft_mat.squeeze().cpu().numpy().T
     if out_type == "torch":
         return out_torch
     elif out_type == "numpy":
-        # combine real and imaginary part
-        return out_torch[0, ...] + out_torch[1, ...]*1j
+        return out_torch[0, ...] + out_torch[1, ...]*1j # combine real and imaginary part
 
+def istft(stft_mat, hop_length=None, window=torch.hann_window):
+    """ stft_mat = [batch, freq, time, complex]
 
+        default values are consistent with librosa.core.spectrum._spectrogram:
+        center = True,
+        normalized = False,
+        onesided = True,
+        unpad_mode = 'reflect'
 
-def istft(stft_matrix, n_fft=2048, n_hopsize=1024, window=torch.hann_window,
-          center=True, normalized=False, onesided=True, length=None, out_type="numpy"):
-    """stft_matrix = (batch, freq, time, complex) 
-
-    # following Keunwoo Choi's implementation of istft.
-    # https://gist.github.com/keunwoochoi/2f349e72cc941f6f10d4adf9b0d3f37e#file-istft-torch-py
-    
     All based on librosa
         - http://librosa.github.io/librosa/_modules/librosa/core/spectrum.html#istft
     What's missing?
         - normalize by sum of squared window --> do we need it here?
         Actually the result is ok by simply dividing y by 2. 
     """
-    assert normalized == False
-    assert onesided == True
-    assert center == True
 
-    if not isinstance(stft_matrix, torch.DoubleTensor):
-        stacked_t = np.stack([np.real(stft_matrix), np.imag(stft_matrix)]).transpose((1, 2, 0))[None, ...]
-        stft_matrix = torch.from_numpy(stacked_t).float()
-    else:
-        stft_matrix = stft_matrix
+    if not isinstance(stft_mat, torch.DoubleTensor):
+        stft_mat = torch.from_numpy(np.stack([np.real(stft_mat), np.imag(stft_mat)]).transpose((1, 2, 0))[None, ...]).float()
+    # stft_mat = stft_mat.to('cuda')
 
-    device = stft_matrix.device
-    n_fft = 2 * (stft_matrix.shape[-3] - 1)
+    n_fft = 2 * (stft_mat.shape[-3] - 1) # would always be an even number
+    if hop_length is None: hop_length = int(n_fft // 2)
 
-    batch = stft_matrix.shape[0]
+    window_istft = window(n_fft)
+    window_istft = window_istft.to(stft_mat.device)
 
-    # By default, use the entire frame
-    if n_fft is None:
-        n_fft = n_fft
-
-    if n_hopsize is None:
-        n_hopsize = int(n_fft // 4)
-
-    istft_window = window(n_fft)
-    istft_window.to(istft_window.device).view(1, -1)  # (batch, freq)
-
-    n_frames = stft_matrix.shape[-2]
-    expected_signal_len = n_fft + n_hopsize * (n_frames - 1)
-    
-    y = torch.zeros(batch, expected_signal_len, device=device)
+    n_frames = stft_mat.shape[-2] # [time] (time domain of stft_mat)
+    n_samples = n_fft + hop_length * (n_frames - 1) # [time] (time domain of reconstructed signal)
+    window_istft = window_istft.view(1, -1) # [batch, time]
+    sig_vec = torch.zeros(stft_mat.shape[0], n_samples, device=stft_mat.device) # [batch, time]
+    win_vec = torch.zeros(stft_mat.shape[0], n_samples, device=stft_mat.device) # [batch, time]
+    win_vec_1frame = window_istft ** 2 # [batch, time]
     for i in range(n_frames):
-        sample = i * n_hopsize
-        spec = stft_matrix[:, :, i]
-        iffted = torch.irfft(spec, signal_ndim=1, signal_sizes=(n_fft,))
+        sig_vec_1frame = torch.irfft(stft_mat[:, :, i], signal_ndim=1, signal_sizes=(n_fft,)) # [batch, time]
+        sig_vec_1frame *= window_istft # [batch, time]
 
-        ytmp = istft_window *  iffted
-        y[:, sample:(sample+n_fft)] += ytmp
-    
-    # undo padding
-    y = y[:, n_fft//2:-n_fft//2]
-    
-    if length is not None:
-        if y.shape[1] > length:
-            y = y[:, :length]
-        elif y.shape[1] < length:
-            y = torch.cat(y[:, :length], torch.zeros(y.shape[0], length - y.shape[1], device=y.device))
-    
-    coeff = n_fft/float(n_hopsize) / 2.0  # -> this might go wrong if curretnly asserted values (especially, `normalized`) changes.
-    
-    if out_type == "torch":
-        return y / coeff
-    elif out_type == "numpy":
-        return np.squeeze(y / coeff).numpy()
+        idx_sig = i * hop_length
+        sig_vec[:, idx_sig:(idx_sig+n_fft)] += sig_vec_1frame
+        win_vec[:, idx_sig:(idx_sig+n_fft)] += win_vec_1frame
+    sig_vec /= win_vec
+    sig_vec = sig_vec[:, n_fft//2:-n_fft//2] # unpadding
 
+    # out_torch = (sig_vec / window_istft.sum()).squeeze().cpu().numpy()
+    out_torch = (sig_vec).squeeze().cpu().numpy()
+    return out_torch
 
 
 def spectogram(X, power=1):
@@ -107,3 +93,5 @@ if __name__ == "__main__":
     s = utils.sine()
     X = stft(s)
     print(X.shape)
+    x = istft(X)
+    print(utils.rms(s, x))
