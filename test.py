@@ -5,8 +5,8 @@ import utils
 import numpy as np
 import matplotlib.pyplot as plt
 
-stfts = [test_torch, test_scipy, test_librosa]
-istfts = [test_torch, test_scipy, test_librosa]
+stfts = [test_torch, test_scipy, test_librosa, test_tf]
+istfts = [test_torch, test_scipy, test_librosa, test_tf]
 
 if __name__ == "__main__":
     s = utils.sine(dtype=np.float32)
