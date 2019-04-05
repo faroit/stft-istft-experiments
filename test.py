@@ -1,15 +1,12 @@
 import test_scipy
 import test_librosa
 import test_torch
-import test_tf
 import utils
 import numpy as np
+import matplotlib.pyplot as plt
 
-stfts = [test_torch, test_scipy, test_librosa, test_tf]
-istfts = [test_torch, test_scipy, test_librosa, test_tf]
-
-n_fft = 2048
-n_hopsize = 1024
+stfts = [test_torch, test_scipy, test_librosa]
+istfts = [test_torch, test_scipy, test_librosa]
 
 if __name__ == "__main__":
     s = utils.sine(dtype=np.float32)
@@ -17,8 +14,8 @@ if __name__ == "__main__":
         stft = getattr(forward_method, 'stft')
         for inverse_method in istfts:
             istft = getattr(inverse_method, 'istft')
-            X = stft(s, n_fft=n_fft, n_hopsize=n_hopsize)
-            x = istft(X, n_fft=n_fft, n_hopsize=n_hopsize)
+            X = stft(s)
+            x = istft(X)
 
             print(
                 forward_method.__name__,

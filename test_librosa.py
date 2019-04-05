@@ -17,6 +17,5 @@ def spectrogram(X, power):
 if __name__ == "__main__":
     s = utils.sine()
     X = stft(s)
-    print(X.shape)
     x = istft(X, rate=44100)
     print(utils.rms(s, x))
