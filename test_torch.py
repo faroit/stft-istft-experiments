@@ -1,4 +1,4 @@
-import torch
+import torch, torchaudio
 import numpy as np
 import utils
 
@@ -21,7 +21,7 @@ def stft(sig_vec, n_fft=None, n_hopsize=None, window=torch.hann_window, out_type
     if n_fft is None: n_fft = 2048 # better to be an even number ?
     if n_hopsize is None: n_hopsize = int(n_fft // 2)
 
-    window_stft = window(n_fft)
+    window_stft = window(n_fft, periodic=True)
     window_stft = window_stft.to(sig_vec.device)
 
     stft_mat = torch.stft(sig_vec,
@@ -64,34 +64,18 @@ def istft(stft_mat, n_fft=None, n_hopsize=None, window=torch.hann_window, out_ty
     if n_fft is None: n_fft = 2 * (stft_mat.shape[-3] - 1) # would always be an even number
     if n_hopsize is None: n_hopsize = int(n_fft // 2)
 
-    window_istft = window(n_fft)
+    window_istft = window(n_fft, periodic=True)
     window_istft = window_istft.to(stft_mat.device)
 
-    sig_vec_frames = torch.irfft(stft_mat.permute(0, 2, 1, 3),
-        signal_ndim = 1,
-        signal_sizes = (n_fft,),
-        normalized = normalized
-    ) # [batch, time, time]
-    #print(sig_vec_frames.shape)
-
-    n_frames = stft_mat.shape[-2] # [time] (time domain of stft_mat)
-    n_samples = n_fft + n_hopsize * (n_frames - 1) # [time] (time domain of reconstructed signal)
-    window_istft = window_istft.view(1, -1) # [batch, time]
-
-    sig_vec = torch.zeros(stft_mat.shape[0], n_samples, device=stft_mat.device) # [batch, time]
-    win_vec = torch.zeros(stft_mat.shape[0], n_samples, device=stft_mat.device) # [batch, time]
-    win_vec_1frame = window_istft ** 2 # [batch, time]
-    for i in range(n_frames):
-        sig_vec_1frame = sig_vec_frames[:, i, :] * window_istft # [batch, time]
-
-        idx_sig = i * n_hopsize
-        sig_vec[:, idx_sig:(idx_sig+n_fft)] += sig_vec_1frame
-        win_vec[:, idx_sig:(idx_sig+n_fft)] += win_vec_1frame
-    sig_vec /= win_vec
-    center = True
-    if center == True:
-        sig_vec = sig_vec[:, n_fft//2:-n_fft//2] # unpadding needed if center = True
-    sig_vec[:, 0] = 0 # fix computation error for 1st sample
+    sig_vec = torchaudio.functional.istft(stft_mat,
+        n_fft = n_fft,
+        hop_length = n_hopsize,
+        window = window_istft,
+        center = True,
+        normalized = normalized,
+        onesided = True,
+        pad_mode = 'reflect'
+    )
 
     #sig_vec = sig_vec / window_istft.sum()
     #print(sig_vec.shape)
