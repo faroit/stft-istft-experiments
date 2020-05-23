@@ -28,7 +28,7 @@ def stft(x, n_fft=2048, n_hopsize=1024, center=True, out_type="numpy"):
 
 
 
-def istft(X, n_fft=2048, n_hopsize=1024, center=True, out_type="numpy"):
+def istft(X, n_fft=2048, n_hopsize=1024, center=True):
     X = tf.cast(X, tf.complex64)
     pad_amount = 2 * (n_fft - n_hopsize)
     audio_tf = tf.contrib.signal.inverse_stft(
@@ -36,11 +36,6 @@ def istft(X, n_fft=2048, n_hopsize=1024, center=True, out_type="numpy"):
         window_fn=tf.contrib.signal.inverse_stft_window_fn(n_hopsize))
     if center and pad_amount > 0:
         audio_tf = audio_tf[pad_amount // 2:-pad_amount // 2]
-
-    if out_type == "tf":
-        return audio_tf
-    elif out_type == "numpy":
-        return audio_tf.numpy()
 
     return audio_tf
 

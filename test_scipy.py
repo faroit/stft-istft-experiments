@@ -11,12 +11,12 @@ def stft(x, n_fft=2048, n_hopsize=1024, window='hann'):
         window=window,
         padded=True,
     )
-    return X * (n_fft / 2)
+    return X * n_hopsize
 
 
 def istft(X, rate=44100, n_fft=2048, n_hopsize=1024, window='hann'):
     t, audio = scipy.signal.istft(
-        X / (n_fft / 2), 
+        X / n_hopsize, 
         rate, 
         nperseg=n_fft, 
         noverlap=n_fft - n_hopsize, 
