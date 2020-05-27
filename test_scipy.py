@@ -2,7 +2,6 @@ import scipy.signal
 import numpy as np
 import utils
 
-
 def stft(x, n_fft=2048, n_hopsize=1024, window='hann'):
     f, t, X = scipy.signal.stft(
         x, 
