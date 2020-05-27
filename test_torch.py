@@ -35,10 +35,8 @@ def stft(sig_vec, n_fft=None, n_hopsize=None, window=torch.hann_window, out_type
     )
 
     #print(stft_mat.shape)
-    if out_type == "torch":
-        out_torch = stft_mat
-    elif out_type == "numpy":
-        out_torch = torch.squeeze(stft_mat, dim=0)
+    out_torch = torch.squeeze(stft_mat, dim=0)
+    if out_type == "numpy":
         out_torch = out_torch.cpu().numpy()
         out_torch = out_torch[..., 0] + out_torch[..., 1]*1j # combine real and imaginary part
     #print(out_torch.shape)
@@ -79,10 +77,8 @@ def istft(stft_mat, n_fft=None, n_hopsize=None, window=torch.hann_window, out_ty
 
     #sig_vec = sig_vec / window_istft.sum()
     #print(sig_vec.shape)
-    if out_type == "torch":
-        out_torch = sig_vec
-    elif out_type == "numpy":
-        out_torch = torch.squeeze(sig_vec, dim=0)
+    out_torch = torch.squeeze(sig_vec, dim=0)
+    if out_type == "numpy":
         out_torch = out_torch.cpu().numpy()
     #print(out_torch.shape)
     return out_torch
