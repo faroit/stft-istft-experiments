@@ -51,7 +51,9 @@ def spectrogram(X, power):
 
 if __name__ == "__main__":
     s = utils.sine()
+#    s = np.stack([s, s, s, s])
     X = stft(s)
     x = istft(X)
+#    print(s)
+#    print(x)
     print(utils.rms(s, x))
-
